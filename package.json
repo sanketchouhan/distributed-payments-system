@@ -1,0 +1,18 @@
+{
+  "name": "distributed-payments-system",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:users": "npm run dev --workspace=@dps/user-management-service",
+    "dev:wallet": "npm run dev --workspace=@dps/distributed-wallet-engine"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module"
+}
