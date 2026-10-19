@@ -8,8 +8,11 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:gateway": "npm run dev --workspace=@dps/api-gateway",
     "dev:users": "npm run dev --workspace=@dps/user-management-service",
-    "dev:wallet": "npm run dev --workspace=@dps/distributed-wallet-engine"
+    "dev:wallet": "npm run dev --workspace=@dps/distributed-wallet-engine",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose.yml down"
   },
   "engines": {
     "node": ">=20"
