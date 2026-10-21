@@ -69,6 +69,17 @@ class RedisClient {
   public static isReady(): boolean {
     return RedisClient.isConnected;
   }
+
+  public static async closeConnection() {
+    if (RedisClient.instance) {
+      try {
+        await RedisClient.instance.quit();
+        logger.info("Redis connection closed");
+      } catch (error) {
+        logger.error("Error closing Redis connection:", error);
+      }
+    }
+  }
 }
 
 export default RedisClient.getInstance();

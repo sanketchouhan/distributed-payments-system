@@ -1,0 +1,1 @@
+Add Sequelize model definitions for the user-management service in this directory. Register each model with the shared Sequelize instance from `src/db/index.ts` before the application starts.

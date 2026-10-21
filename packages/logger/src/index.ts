@@ -1,5 +1,3 @@
-import { AsyncLocalStorage } from "node:async_hooks";
-import { randomUUID } from "node:crypto";
 import type { RequestHandler } from "express";
 import {
   createLogger as createWinstonLogger,
@@ -7,16 +5,12 @@ import {
   transports,
   type Logger,
 } from "winston";
+import { getCorrelationId } from "./correlation.js";
+// import { correlationIdFormat } from "./correlation.js";
 
-const correlationIdContext = new AsyncLocalStorage<string>();
-
-const correlationIdFormat = format((info) => {
-  const correlationId = correlationIdContext.getStore();
-
-  if (correlationId && info.correlationId === undefined) {
-    info.correlationId = correlationId;
-  }
-
+export const correlationIdFormat = format((info) => {
+  const id = getCorrelationId();
+  if (id) info.correlationId = id;
   return info;
 });
 
@@ -36,12 +30,20 @@ export function createServiceLogger(service: string, logLevel: string): Logger {
       format.splat(),
       correlationIdFormat(),
       format.printf(
-        ({ timestamp, level, service, message, stack, ...meta }) => {
-          const metaString = Object.keys(meta).length
+        ({
+          timestamp,
+          level,
+          service,
+          correlationId,
+          message,
+          stack,
+          ...meta
+        }) => {
+          const metaStr = Object.keys(meta).length
             ? ` ${JSON.stringify(meta)}`
             : "";
-          const stackString = stack ? `\n${stack}` : "";
-          return `[${timestamp}] [${level}] [${service}]: ${message}${metaString}${stackString}`;
+          const cid = correlationId ? ` [${correlationId}]` : "";
+          return `[${timestamp}] [${level}] [${service}]${cid}: ${message}${metaStr}${stack ? `\n${stack}` : ""}`;
         },
       ),
     ),
@@ -49,44 +51,34 @@ export function createServiceLogger(service: string, logLevel: string): Logger {
   });
 }
 
-export const correlationIdMiddleware: RequestHandler = (
-  request,
-  response,
-  next,
-) => {
-  const incomingId = request.get("x-correlation-id");
-  const correlationId =
-    incomingId && /^[A-Za-z0-9._:-]{1,128}$/.test(incomingId)
-      ? incomingId
-      : randomUUID();
-
-  response.setHeader("x-correlation-id", correlationId);
-  correlationIdContext.run(correlationId, next);
-};
-
 export function requestLoggingMiddleware(logger: Logger): RequestHandler {
-  return (request, response, next) => {
-    const startedAt = process.hrtime.bigint();
+  return (req, res, next) => {
+    const start = Date.now();
 
-    response.on("finish", () => {
-      const durationMs = Number(
-        (Number(process.hrtime.bigint() - startedAt) / 1_000_000).toFixed(2),
-      );
+    res.on("finish", () => {
       const level =
-        response.statusCode >= 500
+        res.statusCode >= 500
           ? "error"
-          : response.statusCode >= 400
+          : res.statusCode >= 400
             ? "warn"
             : "info";
 
       logger.log(level, "HTTP request completed", {
-        method: request.method,
-        path: request.path,
-        statusCode: response.statusCode,
-        durationMs,
+        method: req.method,
+        path: req.originalUrl,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - start,
       });
     });
 
     next();
   };
 }
+
+export type { Logger };
+export {
+  correlationMiddleware,
+  getCorrelationId,
+  runWithCorrelationId,
+  CORRELATION_HEADER,
+} from "./correlation.js";

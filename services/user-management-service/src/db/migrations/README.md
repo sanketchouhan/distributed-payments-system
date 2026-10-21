@@ -1,0 +1,1 @@
+Add ordered database migrations for the user-management service in this directory. Apply schema changes through migrations; do not use `sequelize.sync({ alter: true })` as a production migration strategy.
